@@ -1,0 +1,7 @@
+{
+    "name": "com.baskorp.marble-track-builder",
+    "version": "1.0.0",
+    "displayName": "Marble Track Builder",
+    "description": "A modular marble track building system with snap-to-connect functionality",
+    "keywords": ["marble", "track", "builder", "modular", "snap-to-connect"]
+}
