@@ -17,6 +17,7 @@ namespace MarbleTrackBuilder
 
         public Vector3 WorldCenter => transform.TransformPoint(connectionCenter);
         public Vector3 WorldNormal => transform.TransformDirection(connectionNormal);
+        public Vector3 GizmoPosition => WorldCenter + WorldNormal * 0.25f;
 
         public bool IsConnected => connectedTo != null;
 
@@ -37,11 +38,6 @@ namespace MarbleTrackBuilder
 
         private void DrawConnectorGizmo(bool isSelected)
         {
-            Vector3 worldCenter = WorldCenter;
-            Vector3 worldNormal = WorldNormal;
-
-            Vector3 gizmoPosition = worldCenter + worldNormal * 0.2f;
-
             if (IsConnected)
             {
                 Gizmos.color = Color.red;
@@ -55,7 +51,7 @@ namespace MarbleTrackBuilder
                 Gizmos.color = Color.green;
             }
 
-            Gizmos.DrawWireSphere(gizmoPosition, 0.1f);
+            Gizmos.DrawWireSphere(GizmoPosition, 0.1f);
         }
 
         private void CheckForSnapping()
@@ -97,10 +93,7 @@ namespace MarbleTrackBuilder
             Undo.RecordObject(this, "Snap Track Pieces");
             Undo.RecordObject(other, "Snap Track Pieces");
 
-            Vector3 thisTrackPieceOffset = WorldCenter - transform.parent.position;
-            Vector3 targetPosition = other.WorldCenter - thisTrackPieceOffset;
-
-            transform.parent.position = targetPosition;
+            transform.parent.position = other.GizmoPosition;
 
             connectedTo = other;
             other.connectedTo = this;
