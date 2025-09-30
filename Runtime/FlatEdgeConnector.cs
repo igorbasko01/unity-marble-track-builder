@@ -23,6 +23,16 @@ namespace MarbleTrackBuilder
 
         public void OnEditorObjectMoved()
         {
+            if (IsConnected)
+            {
+                // Revert to the connected position
+                Vector3 targetPosition = connectedTo.GizmoPosition;
+                if (Vector3.Distance(transform.parent.position, targetPosition) > 0.01f)
+                {
+                    transform.parent.position = targetPosition;
+                }
+                return;
+            }
             CheckForSnapping();
         }
 
@@ -56,12 +66,6 @@ namespace MarbleTrackBuilder
 
         private void CheckForSnapping()
         {
-            if (IsConnected)
-            {
-                CheckForAutoDisconnect();
-                return;
-            }
-
             FlatEdgeConnector[] allConnectors = FindObjectsByType<FlatEdgeConnector>(FindObjectsSortMode.None);
             FlatEdgeConnector bestCandidate = null;
             float closestDistance = float.MaxValue;
@@ -126,36 +130,60 @@ namespace MarbleTrackBuilder
             return angleError < snapAngleTolerance;
         }
 
-        private void CheckForAutoDisconnect()
-        {
-            if (IsConnected && connectedTo != null)
-            {
-                float distance = Vector3.Distance(WorldCenter, connectedTo.WorldCenter);
-                Debug.Log($"Distance to connected piece: {distance:F2}");
-                if (distance > snapDistance * 2)
-                {
-                    Debug.Log($"Auto-disconnecting {name} - distance {distance:F2} > {snapDistance * 2:F2}");
-                    Disconnect();
-                }
-            }
-        }
-
-        private void Disconnect()
+        public void Disconnect()
         {
             if (IsConnected)
             {
                 Undo.RecordObject(this, "Disconnect Track Pieces");
                 Undo.RecordObject(connectedTo, "Disconnect Track Pieces");
+                Undo.RecordObject(transform.parent, "Disconnect Track Pieces");
 
                 FlatEdgeConnector other = connectedTo;
+
+                Vector3 moveDirection = (WorldCenter - other.WorldCenter).normalized;
+                if (moveDirection == Vector3.zero)
+                {
+                    moveDirection = transform.parent.forward;
+                }
+
+                float moveDistance = snapDistance * 2f;
+                transform.parent.position += moveDirection * moveDistance;
+
                 connectedTo = null;
                 other.connectedTo = null;
 
                 EditorUtility.SetDirty(this);
                 EditorUtility.SetDirty(other);
+                EditorUtility.SetDirty(transform.parent.gameObject);
 
                 Debug.Log($"Disconnected {transform.parent.name} from {other.transform.parent.name}");
             }
         }
     }
+
+#if UNITY_EDITOR
+    [CustomEditor(typeof(FlatEdgeConnector))]
+    public class FlatEdgeConnectorEditor : Editor
+    {
+        public override void OnInspectorGUI()
+        {
+            base.OnInspectorGUI();
+            FlatEdgeConnector connector = (FlatEdgeConnector)target;
+            EditorGUILayout.Space();
+
+            if (connector.IsConnected)
+            {
+                EditorGUILayout.HelpBox($"Connected to: {connector.connectedTo.transform.parent.name}", MessageType.Info);
+                if (GUILayout.Button("Disconnect"))
+                {
+                    connector.Disconnect();
+                }
+            }
+            else
+            {
+                EditorGUILayout.HelpBox("Not connected", MessageType.None);
+            }
+        }
+    }
+#endif
 }
